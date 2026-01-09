@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polat Kuyumculuk | Canlı Fiyat Paneli</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root { --gold: #d4af37; --dark-bg: #121212; --text-color: #e0e0e0; }
+        body { background-color: var(--dark-bg); color: var(--text-color); font-family: 'Montserrat', sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
+        header { width: 100%; text-align: center; padding: 25px 0; background: linear-gradient(to bottom, #1d1d1d, #121212); border-bottom: 2px solid var(--gold); }
+        .logo-text { font-family: 'Playfair Display', serif; font-size: 2.5rem; color: var(--gold); margin: 0; letter-spacing: 3px; }
+        .container { width: 95%; max-width: 1200px; margin: 20px auto; }
+        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 900px) { .price-grid { grid-template-columns: 1fr; } }
+        table { width: 100%; border-collapse: collapse; background: #1a1a1a; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        th { background-color: #ce9e0c; color: #000; padding: 15px; text-transform: uppercase; font-size: 0.85rem; }
+        td { padding: 15px; border-bottom: 1px solid #2d2d2d; font-weight: 600; font-size: 1.1rem; }
+        .name-cell { color: var(--gold); }
+        .price-cell { text-align: right; font-family: 'monospace'; color: #fff; }
+        .up { color: #2ecc71 !important; }
+        .down { color: #e74c3c !important; }
+        .update-time { font-size: 0.9rem; color: var(--gold); margin-top: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-text">POLAT KUYUMCULUK</div>
+    <div id="clock" class="update-time">Yükleniyor...</div>
+</header>
+
+<div class="container">
+    <div class="price-grid">
+        <table>
+            <thead>
+                <tr><th align="left">ALTIN CİNSİ</th><th align="right">ALIŞ</th><th align="right">SATIŞ</th></tr>
+            </thead>
+            <tbody id="gold-table-body">
+                <tr><td colspan="3" align="center">Altın verileri yükleniyor...</td></tr>
+            </tbody>
+        </table>
+
+        <table>
+            <thead>
+                <tr><th align="left">DÖVİZ CİNSİ</th><th align="right">ALIŞ</th><th align="right">SATIŞ</th></tr>
+            </thead>
+            <tbody id="currency-table-body">
+                <tr><td colspan="3" align="center">Döviz verileri yükleniyor...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let lastPrices = {};
+
+    async function updateDashboard() {
+        try {
+            // Türkiye piyasası için en güncel ve açık servis
+            const response = await fetch('https://finans.truncgil.com/today.json');
+            const data = await response.json();
+
+            // SOL TABLO İÇERİĞİ
+            const goldList = [
+                { label: "HAS ALTIN", key: "Gram Altın" },
+                { label: "22 AYAR BİLEZİK", key: "22 Ayar Bilezik" },
+                { label: "YENİ ÇEYREK", key: "Çeyrek Altın" },
+                { label: "YENİ YARIM", key: "Yarım Altın" },
+                { label: "YENİ TAM", key: "Tam Altın" }
+            ];
+
+            // SAĞ TABLO İÇERİĞİ
+            const currencyList = [
+                { label: "ATA CUMHURİYET", key: "Cumhuriyet Altını" },
+                { label: "ONS ALTIN", key: "Ons" },
+                { label: "ABD DOLARI", key: "USD" },
+                { label: "EURO", key: "EUR" },
+                { label: "STERLİN", key: "GBP" }
+            ];
+
+            renderTable("gold-table-body", goldList, data);
+            renderTable("currency-table-body", currencyList, data);
+
+        } catch (error) {
+            console.error("Veri çekilemedi:", error);
+        }
+    }
+
+    function renderTable(containerId, list, liveData) {
+        let html = "";
+        list.forEach(item => {
+            const entry = liveData[item.key];
+            if (entry) {
+                const buy = entry.Alış || "0,00";
+                const sell = entry.Satış || "0,00";
+                const currentVal = parseFloat(sell.replace('.', '').replace(',', '.'));
+                
+                let trend = "";
+                if (lastPrices[item.label]) {
+                    if (currentVal > lastPrices[item.label]) trend = "up";
+                    else if (currentVal < lastPrices[item.label]) trend = "down";
+                }
+                lastPrices[item.label] = currentVal;
+
+                html += `<tr>
+                    <td class="name-cell">${item.label}</td>
+                    <td class="price-cell">${buy}</td>
+                    <td class="price-cell ${trend}">${sell}</td>
+                </tr>`;
+            }
+        });
+        if(html !== "") document.getElementById(containerId).innerHTML = html;
+    }
+
+    function startClock() {
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleDateString('tr-TR') + " - " + now.toLocaleTimeString('tr-TR');
+        }, 1000);
+    }
+
+    updateDashboard();
+    startClock();
+    setInterval(updateDashboard, 15000); // 15 saniyede bir fiyat güncelle
+</script>
+</body>
+</html>
